@@ -7,15 +7,20 @@ import easyargs
 def sim(query_wf, doc_number, inverse_index, idf):
     query_weight = dict()
     doc_weight = dict()
-    for term in query_wf:
-        query_weight[term] = query_wf[term] * idf[term]
+    for term in inverse_index:
+        query_weight[term] = query_wf.get(term,0) * idf[term]
         # get the weight of the term in the document, WF=0 if not present
         doc_weight[term] = inverse_index[term].get(doc_number,0) * idf[term]
     # vector of query weights
-    qw = np.array([query_weight[term] for term in query_wf])
+    qw = np.array([query_weight[term] for term in inverse_index])
     # vector of document weights
-    dw = np.array([doc_weight[term] for term in query_wf])
-    return np.dot(qw,dw)/(np.linalg.norm(qw) * np.linalg.norm(dw))
+    dw = np.array([doc_weight[term] for term in inverse_index])
+    
+    if np.linalg.norm(dw) == 0:
+        simqd = 0
+    else:
+        simqd = np.dot(qw,dw)/(np.linalg.norm(qw) * np.linalg.norm(dw))
+    return simqd
 
 def calc_idf(inverse_index, num_docs):
     idf = dict()
@@ -61,14 +66,13 @@ def main(query_file, document_list, stopwordfile):
     # Load the document list - one file per line
     with open(document_list,'r') as f:
         print(f"Loading document list from {document_list}")
-        doclist = f.read().split("\n")
+        doclist = f.read().split()
     # Construct the vocabulary
     vocabulary, document_tokens = build_vocabulary(doclist, stopwordfile)
     # Build the inverse index
     inverse_index = build_inverse_index(document_tokens, vocabulary)
     # Computer the inverse doc frequencies
     idf = calc_idf(inverse_index, len(doclist))
-
     # Load the query
     with open(query_file,'r') as f:
         query = f.read()
